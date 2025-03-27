@@ -8,7 +8,8 @@ espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
 composeBom = "2025.03.00"
-camerax_version = "1.4.1"
+camerax_version = "1.4.2"
+io_minio_minio_version = '8.5.7'
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,8 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax_version" }
 androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax_version" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax_version" }
+
+io-minio-minio = { group = "io.minio", name = "minio", version.ref = "io_minio_minio_version" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

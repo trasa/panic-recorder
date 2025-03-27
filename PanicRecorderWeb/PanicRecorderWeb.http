@@ -1,0 +1,6 @@
+@PanicRecorderWeb_HostAddress = http://localhost:5197
+
+GET {{PanicRecorderWeb_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
