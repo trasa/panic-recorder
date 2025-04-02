@@ -10,6 +10,8 @@ activityCompose = "1.10.1"
 composeBom = "2025.03.00"
 camerax_version = "1.4.2"
 io_minio_minio_version = '8.5.7'
+androidx_fragment_version = '1.8.6'
+androidx_appcompat_version = '1.7.0'
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,6 +34,8 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax_version" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax_version" }
 
+androidx-fragment = { group = "androidx.fragment", name="fragment-ktx", version.ref = "androidx_fragment_version" }
+androidx-appcompat = { group = "androidx.appcompat", name="appcompat", version.ref = "androidx_appcompat_version" }
 io-minio-minio = { group = "io.minio", name = "minio", version.ref = "io_minio_minio_version" }
 
 [plugins]

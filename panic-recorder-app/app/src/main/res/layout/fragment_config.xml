@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/edit_api_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="https://panic.meancat.com"
+            android:hint="@string/api_url_setting"
+            android:inputType="textUri" 
+            android:layout_marginBottom="16dp"/>
+
+        <EditText
+            android:id="@+id/edit_app_secret"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="App Secret"
+            android:hint="@string/app_secret_setting"
+            android:inputType="textPassword"
+            android:layout_marginBottom="24dp"/>
+
+        <Button
+            android:id="@+id/button_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/save_configuration_setting" />
+        
+        <Button
+            android:id="@+id/button_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/cancel"
+            android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+</ScrollView>
+

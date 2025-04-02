@@ -1,6 +1,7 @@
 package com.meancat.panicrecorder
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
@@ -10,18 +11,21 @@ import android.media.MediaRecorder
 import android.os.*
 import android.util.Log
 import android.util.Size
+import android.view.Menu
+import android.view.MenuItem
 import android.view.Surface
 import android.view.TextureView
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var textureView: TextureView
     private lateinit var recordButton: Button
@@ -161,6 +165,7 @@ class MainActivity : ComponentActivity() {
                         session.setRepeatingRequest(captureRequestBuilder.build(), null, null)
                         mediaRecorder.start()
                         isRecording = true
+                        invalidateOptionsMenu()
                         recordButton.text = getString(R.string.stop_recording)
                         Toast.makeText(this@MainActivity, "Recording started", Toast.LENGTH_SHORT).show()
                     }
@@ -213,6 +218,7 @@ class MainActivity : ComponentActivity() {
             mediaRecorder.reset()
             mediaRecorder.release()
             isRecording = false
+            invalidateOptionsMenu()
             recordButton.text = getString(R.string.start_recording)
             previewSurface?.release()
             recorderSurface?.release()
@@ -220,6 +226,27 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
         }
+    }
+    
+    override fun onCreateOptionsMenu(menu: Menu) : Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        // cant change settings if we're recording
+        menu?.findItem(R.id.action_settings)?.isVisible = !isRecording
+        return super.onPrepareOptionsMenu(menu)
     }
 
     companion object {
