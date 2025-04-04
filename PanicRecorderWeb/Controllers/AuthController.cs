@@ -12,10 +12,12 @@ namespace PanicRecorder.Web.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private ILogger<AuthController> _logger;
     private readonly AuthOptions _authOptions;
 
-    public AuthController(IOptions<AuthOptions> authOptions)
+    public AuthController(ILogger<AuthController> logger, IOptions<AuthOptions> authOptions)
     {
+        _logger = logger;
         _authOptions = authOptions.Value;
     }
 
@@ -26,6 +28,7 @@ public class AuthController : ControllerBase
     {
         if (!IsAppKeyValid())
         {
+            _logger.LogWarning("Unauthorized key authentication attempt for {Username}", request.Username);
             return Unauthorized();
         }
 
@@ -37,7 +40,7 @@ public class AuthController : ControllerBase
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: creds
         );
-
+        _logger.LogInformation("Successful key authentication for {Username}", request.Username);
         var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
         return Ok(new { token = tokenString });
     }

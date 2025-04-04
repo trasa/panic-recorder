@@ -8,6 +8,7 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -17,7 +18,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PanicRecorder">
+        android:theme="@style/Theme.PanicRecorder"
+        android:networkSecurityConfig="@xml/network_security_config"
+        >
         <activity
             android:name=".MainActivity"
             android:exported="true"

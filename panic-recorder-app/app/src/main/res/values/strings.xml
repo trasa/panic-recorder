@@ -3,8 +3,11 @@
     <string name="start_recording">Start Recording</string>
     <string name="stop_recording">Stop Recording</string>
     <string name="settings">Settings</string>
-    <string name="api_url_setting">API URL (e.g. https://panic.meancat.com)</string>
+    <string name="url_label">PanicWeb Url:</string>
+    <string name="api_url_setting">https://panic.meancat.com</string>
+    <string name="secret_label">PanicWeb Secret</string>
     <string name="app_secret_setting">App Secret</string>
     <string name="save_configuration_setting">Save Configuration</string>
     <string name="cancel">Cancel</string>
+    <string name="enable_s3_upload_setting">Enable S3 Upload</string>
 </resources>

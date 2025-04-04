@@ -9,7 +9,7 @@ import kotlin.concurrent.timer
 class ChunkedS3Uploader( 
     private val sourceFile: File,
     private val chunkDirectory: File,
-    private val uploadFunction: (chunk: File ) -> Unit
+    private val uploadFunction: (chunk: File) -> Unit
 ) { 
     private var timer: Timer? = null
     private var lastPosition: Long = 0L

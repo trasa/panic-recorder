@@ -17,7 +17,6 @@ import android.view.Surface
 import android.view.TextureView
 import android.widget.Button
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -69,7 +68,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         recordButton.setOnClickListener {
-            if (isRecording) stopRecording() else startRecording()
+            val config = PanicConfig.load(this)
+            if (isRecording) stopRecording() else startRecording(config)
         }
     }
 
@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
         }
         return ""
     }
-    
+   
     private fun openCamera() {
         val manager = getSystemService(CAMERA_SERVICE) as CameraManager
         try {
@@ -134,10 +134,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRecording() {
+    private fun startRecording(config: PanicConfig) {
         Log.d(TAG, "start recording")
         try {
             setupMediaRecorder()
+            if (config.enableUpload) {
+                Thread {
+                    val api = PanicApi(config)
+                    val token = api.fetchToken()
+                    if (token != null) {
+                        val presignedUrl = PanicApi(config).getPresignedUrl(videoFile.name, token)
+                        if (presignedUrl != null) {
+                            Log.d(TAG, "Presigned URL obtained: $presignedUrl")
+                            // TODO uploader was here
+                        } else {
+                            Log.e(TAG, "Failed to get presigned url - upload disabled")
+                        }
+                    } else {
+                        Log.e(TAG, "Failed to fetch JWT from PanicAPI (is your secret correct?) - upload disabled")
+                    }
+                }.start()
+            }
+            
             val surfaceTexture = textureView.surfaceTexture!!
             surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
             previewSurface = Surface(surfaceTexture)
@@ -211,6 +229,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopRecording() {
         try {
+            //uploader?.stop()
             cameraCaptureSession?.stopRepeating()
             cameraCaptureSession?.abortCaptures()
             cameraCaptureSession?.close()

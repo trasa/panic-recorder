@@ -7,8 +7,9 @@ namespace PanicRecorder.Web.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UploadController(IAmazonS3 s3Client, IOptions<S3Options> s3options) : ControllerBase
+    public class UploadController(ILogger<UploadController> logger, IAmazonS3 s3Client, IOptions<S3Options> s3options) : ControllerBase
     {
+        private ILogger<UploadController> Logger { get; } = logger;
         private IAmazonS3 S3Client { get; } = s3Client;
         private S3Options S3Options { get; } = s3options.Value;
 
@@ -18,8 +19,10 @@ namespace PanicRecorder.Web.Controllers
         {
             if (string.IsNullOrWhiteSpace(filename))
             {
+                Logger.LogWarning("Bad Request to get presigned URL (filename is required)");
                 return BadRequest("filename is required");
             }
+
             var request = new Amazon.S3.Model.GetPreSignedUrlRequest
             {
                 BucketName = S3Options.BucketName,
@@ -28,6 +31,7 @@ namespace PanicRecorder.Web.Controllers
                 Expires = DateTime.UtcNow.AddMinutes(15), // URL expires in 15 minutes
                 ContentType = "video/MP2T"
             };
+            Logger.LogInformation("Building PreSignedUrl for {Filename}", filename);
             var url = await S3Client.GetPreSignedURLAsync(request);
             return Ok(url);
         }

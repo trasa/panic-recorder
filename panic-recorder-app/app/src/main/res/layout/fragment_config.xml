@@ -10,6 +10,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <TextView
+            android:id="@+id/url_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/url_label"
+            android:labelFor="@+id/edit_api_url" />
+        
         <EditText
             android:id="@+id/edit_api_url"
             android:layout_width="match_parent"
@@ -17,7 +24,14 @@
             android:autofillHints="https://panic.meancat.com"
             android:hint="@string/api_url_setting"
             android:inputType="textUri" 
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp" />
+        
+        <TextView
+            android:id="@+id/secret_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/secret_label"
+            android:labelFor="@+id/edit_app_secret" />
 
         <EditText
             android:id="@+id/edit_app_secret"
@@ -27,6 +41,13 @@
             android:hint="@string/app_secret_setting"
             android:inputType="textPassword"
             android:layout_marginBottom="24dp"/>
+
+        <CheckBox
+            android:id="@+id/checkbox_enable_upload"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_s3_upload_setting"
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/button_save"
