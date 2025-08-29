@@ -20,9 +20,12 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +37,9 @@ class MainActivity : AppCompatActivity() {
     private var cameraCaptureSession: CameraCaptureSession? = null
     private var isRecording = false
     private lateinit var videoFile: File
+    private lateinit var mediaStreamer: MultipartStreamer
+    private lateinit var streamerThread: Thread
+    
     private var previewSurface: Surface? = null
     private var recorderSurface: Surface? = null
 
@@ -139,23 +145,8 @@ class MainActivity : AppCompatActivity() {
         try {
             setupMediaRecorder()
             if (config.enableUpload) {
-                Thread {
-                    val api = PanicApi(config)
-                    val token = api.fetchToken()
-                    if (token != null) {
-                        val presignedUrl = PanicApi(config).getPresignedUrl(videoFile.name, token)
-                        if (presignedUrl != null) {
-                            Log.d(TAG, "Presigned URL obtained: $presignedUrl")
-                            // TODO uploader was here
-                        } else {
-                            Log.e(TAG, "Failed to get presigned url - upload disabled")
-                        }
-                    } else {
-                        Log.e(TAG, "Failed to fetch JWT from PanicAPI (is your secret correct?) - upload disabled")
-                    }
-                }.start()
+                startUploading(config)
             }
-            
             val surfaceTexture = textureView.surfaceTexture!!
             surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
             previewSurface = Surface(surfaceTexture)
@@ -201,6 +192,32 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to start recording", e)
         }
     }
+    
+    private fun startUploading(config: PanicConfig) {
+        val client = PanicHttpClient(config)
+        lifecycleScope.launch {
+            val token = client.fetchToken()
+            if (token == null) {
+                Toast.makeText(this@MainActivity, "Auth Failed", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val api = PanicApi(client, token)
+            val timestamp = SimpleDateFormat(
+                "yyyyMMdd_HHmmss",
+                Locale.US
+            ).format(Date()) + "_" + UUID.randomUUID().toString()
+            mediaStreamer = MultipartStreamer(
+                api,
+                client,
+                videoFile,
+                "streams/$timestamp/${videoFile.nameWithoutExtension}.ts"
+            )
+            streamerThread = thread(start = true, name = "MultipartStreamer") {
+                val ok = mediaStreamer.runBlocking()
+                Log.d(TAG, "Streaming completed: $ok")
+            }
+        }
+    }
 
     private fun setupMediaRecorder() {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -223,13 +240,12 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "MediaRecorder.prepare() failed", e)
             throw e
-        }
+        } 
     }
 
 
     private fun stopRecording() {
         try {
-            //uploader?.stop()
             cameraCaptureSession?.stopRepeating()
             cameraCaptureSession?.abortCaptures()
             cameraCaptureSession?.close()
@@ -242,6 +258,8 @@ class MainActivity : AppCompatActivity() {
             previewSurface?.release()
             recorderSurface?.release()
             Toast.makeText(this, "Recording saved: ${videoFile.name}", Toast.LENGTH_SHORT).show()
+            mediaStreamer.stop()
+            streamerThread.join()
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
         }

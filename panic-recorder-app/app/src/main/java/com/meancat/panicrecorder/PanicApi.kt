@@ -1,92 +1,96 @@
 package com.meancat.panicrecorder
 
 import android.util.Log
-import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.MediaType.Companion.toMediaType
+import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URI
 
+data class StartMultipartResp(val uploadId: String, val objectKey: String)
+data class PresignPartResp(val url: String, val headers: Map<String, String> = emptyMap())
+data class CompletedPart(val partNumber: Int, val eTag: String)
 
-data class PresignResult(
-    val url: String,
-    val headers: Map<String, String> = emptyMap()
-)
+class PanicApi(private val http: PanicHttpClient, private val jwtToken: String) {
+    fun requestBuilder(path: String): Request.Builder =
+        http.requestBuilder(path, jwtToken)
 
-class PanicApi(private val config: PanicConfig) {
-    
-    private val httpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .callTimeout(java.time.Duration.ofSeconds(60))
-            .connectTimeout(java.time.Duration.ofSeconds(20))
-            .readTimeout(java.time.Duration.ofSeconds(60))
-            .writeTimeout(java.time.Duration.ofSeconds(60))
+    fun startMultipart(objectKeyHint: String): StartMultipartResp? {
+        val body =
+            """{"keyHint":"$objectKeyHint"}""".toRequestBody("application/json".toMediaType())
+        val req = requestBuilder("/api/upload/multipart/start")
+            .post(body)
             .build()
-    }
-    
-    public fun fetchToken(): String? {
-        if (!config.enableUpload) {
-            throw IllegalStateException("can't get url if enableUpload is false")
-        }
-        return try {
-            val url = URI(config.apiUrl).resolve("/api/auth/token").toString()
-            val json = "{}".toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url(url)
-                .post(json)
-                .addHeader("Authorization", "Bearer ${config.appSecret}")
-                .build()
-            httpClient.newCall(request).execute().use { resp ->
-                val body = resp.body?.string().orElseEmpty()
-                if (resp.isSuccessful) {
-                    val token = JSONObject(body).optString("token")
-                    if (token.isNullOrBlank()) {
-                        Log.e("PanicApi", "No token in response body")
-                        null
-                    } else {
-                        token
-                    }
-                } else {
-                    Log.e("PanicApi", "Failed to fetch JWT: HTTP ${resp.code}, error: $body")
-                    null
-                } 
+        http.client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                Log.e("PanicApi", "startMultipart failed ${resp.code}: $txt")
+                return null
             }
-        } catch (e: Exception) {
-            Log.e("PanicApi", "Exception while fetching token", e)
-            null
+            Log.d("PanicApi", "startMultipart: $txt")
+            val j = JSONObject(txt)
+            return StartMultipartResp(j.getString("uploadId"), j.getString("objectKey"))
         }
     }
-    
-    private fun String?.orElseEmpty(): String = this ?: ""
 
-    fun getPresignedUrl(filename: String, jwtToken: String): PresignResult? {
-        if (!config.enableUpload) {
-            throw IllegalStateException("can't get presigned url if enableUpload is false")
-        }
-        return try {
-            val url =
-                URI(config.apiUrl).resolve("/api/upload/presigned?filename=$filename").toString()
-            val request = Request.Builder()
-                .url(url)
-                .get()
-                .addHeader("Authorization", "Bearer $jwtToken")
+    fun presignPart(uploadId: String, partNumber: Int, objectKey: String): PresignPartResp? {
+        val req =
+            requestBuilder("/api/upload/multipart/presign?uploadId=$uploadId&partNumber=$partNumber&objectKey=$objectKey")
+                .post("{}".toRequestBody("application/json".toMediaType()))
                 .build()
-            httpClient.newCall(request).execute().use { resp ->
-                val body = resp.body?.string().orElseEmpty()
-                if (resp.isSuccessful) {
-                    PresignResult(body, resp.headers.toMap())
-                } else {
-                    Log.e(
-                        "PanicApi",
-                        "failed to fetch presigned url for $filename: HTTP ${resp.code}, error: $body"
-                    )
-                    null
-                }
+        http.client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                Log.e("PanicApi", "presignPart failed ${resp.code}: $txt")
+                return null
             }
-        } catch (e: Exception) {
-            Log.e("PanicApi", "Exception while fetching presigned url", e)
-            null
+            val j = JSONObject(txt)
+            val headers = mutableMapOf<String, String>()
+            j.optJSONObject("headers")?.let { obj ->
+                obj.keys().forEach { k -> headers[k] = obj.getString(k) }
+            }
+            return PresignPartResp(j.getString("url"), headers)
+        }
+    }
+    
+    fun completeMultipart(uploadId: String, parts: List<CompletedPart>) : Boolean {
+        val partsJson = JSONArray().apply {
+            parts.forEach {
+                put(
+                    JSONObject(
+                        mapOf(
+                            "partNumber" to it.partNumber,
+                            "eTag" to it.eTag
+                        )
+                    )
+                )
+            }
+        }
+        val body = JSONObject(mapOf("uploadId" to uploadId, "parts" to partsJson))
+            .toString()
+            .toRequestBody("application/json".toMediaType())
+        val req = requestBuilder("/api/upload/multipart/complete")
+            .post(body)
+            .build()
+        http.client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                Log.e("PanicApi", "completeMultipart failed ${resp.code}: $txt")
+                return false
+            }
+            return true
+        }
+    }
+    
+    fun abortMultipart(uploadId: String) {
+        val req = requestBuilder("/api/upload/multipart/abort")
+            .post(JSONObject(mapOf("uploadId" to uploadId)).toString()
+                .toRequestBody("application/json".toMediaType()))
+            .build()
+        http.client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                Log.e("PanicApi", "abortMultipart failed ${resp.code}")
+            }
         }
     }
 }

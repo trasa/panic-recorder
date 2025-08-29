@@ -3,6 +3,7 @@ using Amazon.S3;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using PanicRecorder.Web;
+using PanicRecorder.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
         ServiceURL = s3Config["ServiceURL"],
         ForcePathStyle = true // required for compatibility
     }));
+
+builder.Services.AddSingleton<UploadService>();
 
 builder.Services.Configure<AuthOptions>(authConfig);
 builder.Services.Configure<S3Options>(s3Config);
