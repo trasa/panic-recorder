@@ -53,9 +53,9 @@ class PanicApi(private val http: PanicHttpClient, private val jwtToken: String) 
         }
     }
     
-    fun completeMultipart(uploadId: String, parts: List<CompletedPart>) : Boolean {
+    fun completeMultipart(uploadId: String, objectKey: String, parts: List<CompletedPart>) : Boolean {
         val partsJson = JSONArray().apply {
-            parts.forEach {
+            parts.sortedBy { it.partNumber }.forEach {
                 put(
                     JSONObject(
                         mapOf(
@@ -66,12 +66,16 @@ class PanicApi(private val http: PanicHttpClient, private val jwtToken: String) 
                 )
             }
         }
-        val body = JSONObject(mapOf("uploadId" to uploadId, "parts" to partsJson))
-            .toString()
-            .toRequestBody("application/json".toMediaType())
+        val payload = JSONObject(mapOf(
+            "uploadId" to uploadId, 
+            "objectKey" to objectKey, 
+            "parts" to partsJson
+        )).toString()
+        
         val req = requestBuilder("/api/upload/multipart/complete")
-            .post(body)
+            .post(payload.toRequestBody("application/json".toMediaType()))
             .build()
+        
         http.client.newCall(req).execute().use { resp ->
             val txt = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {

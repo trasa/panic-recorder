@@ -6,7 +6,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.RandomAccessFile
-import kotlin.math.log
 
 class MultipartStreamer(
     private val api: PanicApi,
@@ -66,7 +65,7 @@ class MultipartStreamer(
                     throw RuntimeException("final part upload failed")
                 }
             }
-            return api.completeMultipart(state.uploadId, state.completed)
+            return api.completeMultipart(state.uploadId, state.objectKey, state.completed)
         } catch(t: Throwable) {
             Log.e("MultipartStreamer", "streaming error", t)
             // best effort abort
@@ -95,17 +94,11 @@ class MultipartStreamer(
             } else {
                 Log.d(
                     "MultipartStreamer",
-                    "part $partNum of ${bytes.size} uploaded to ${presign.url}"
+                    "part $partNum containing ${bytes.size} bytes uploaded to ${presign.url}"
                 )
             }
-            val eTag = resp.header("ETag")?.trim('"') ?: ""
-            if (eTag.isBlank()) {
-                Log.w(
-                    "MultipartStreamer",
-                    "part $partNum uploaded but missing eTag; using body length=${bodyTxt.length}"
-                )
-            }
-            state.completed += CompletedPart(partNum, eTag.ifBlank { "missing-etag-$partNum" })
+            val eTag = resp.header("ETag") ?: return false
+            state.completed += CompletedPart(partNum, eTag)
             state.nextPartNum++
             return true
         }
