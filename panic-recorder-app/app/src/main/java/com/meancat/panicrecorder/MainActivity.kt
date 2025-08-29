@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var videoFile: File
     private lateinit var mediaStreamer: MultipartStreamer
     private lateinit var streamerThread: Thread
-    
     private var previewSurface: Surface? = null
     private var recorderSurface: Surface? = null
 
@@ -99,6 +98,49 @@ class MainActivity : AppCompatActivity() {
         }
         return ""
     }
+    
+    private fun getOptimalPreviewSize(characteristics: CameraCharacteristics): Size {
+        val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            ?: return Size(1920, 1080) // fallback
+
+        val recorderSizes = map.getOutputSizes(MediaRecorder::class.java)
+        val textureSizes = map.getOutputSizes(SurfaceTexture::class.java)
+
+        // Find a size that works for both preview and recording
+        val commonSizes = recorderSizes.filter { recorderSize ->
+            textureSizes.any { textureSize ->
+                textureSize.width == recorderSize.width && textureSize.height == recorderSize.height
+            }
+        }
+        // Prefer 1080p, fall back to largest available
+        return commonSizes.find { it.width == 1920 && it.height == 1080 }
+            ?: commonSizes.maxByOrNull { it.width * it.height }
+            ?: Size(1920, 1080) 
+    }
+    
+    private fun logSupportedSizes(characteristics: CameraCharacteristics) {
+        val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+        if (map != null) {
+            Log.d(TAG, "Supported MediaRecorder sizes:")
+            map.getOutputSizes(MediaRecorder::class.java).forEach { size ->
+                Log.d(TAG, "  ${size.width}x${size.height}")
+            }
+            Log.d(TAG, "Supported SurfaceTexture sizes:")
+            map.getOutputSizes(SurfaceTexture::class.java).forEach { size ->
+                Log.d(TAG, "  ${size.width}x${size.height}")
+            }
+        }
+    } 
+    private fun isConfigurationSupported(characteristics: CameraCharacteristics): Boolean {
+        val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            ?: return false
+        
+        val recorderSizes = map.getOutputSizes(MediaRecorder::class.java)
+        val textureSizes = map.getOutputSizes(SurfaceTexture::class.java)
+
+        // Check if our chosen size is supported by both
+        return recorderSizes.contains(previewSize) && textureSizes.contains(previewSize)
+    }
    
     private fun openCamera() {
         val manager = getSystemService(CAMERA_SERVICE) as CameraManager
@@ -114,8 +156,10 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.d(TAG, "camera is $cameraId")
             }
-            // size is now hard-coded, because this kept causing the hardware to crash
-            
+            val characteristics = manager.getCameraCharacteristics(cameraId)
+            logSupportedSizes(characteristics)
+            previewSize = getOptimalPreviewSize(characteristics)
+            Log.d(TAG, "Using preview size ${previewSize.width}x${previewSize.height}")
             manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
@@ -180,6 +224,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     override fun onConfigureFailed(session: CameraCaptureSession) {
                         Log.e(TAG, "session configuration failed!")
+                        isRecording = false
+                        stopUploading()
                         Toast.makeText(
                             this@MainActivity,
                             "Camera config failed",
@@ -258,11 +304,15 @@ class MainActivity : AppCompatActivity() {
             previewSurface?.release()
             recorderSurface?.release()
             Toast.makeText(this, "Recording saved: ${videoFile.name}", Toast.LENGTH_SHORT).show()
-            mediaStreamer.stop()
-            streamerThread.join()
+            stopUploading()
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
         }
+    }
+    
+    private fun stopUploading() {
+        mediaStreamer.stop()
+        streamerThread.join()
     }
     
     override fun onCreateOptionsMenu(menu: Menu) : Boolean {

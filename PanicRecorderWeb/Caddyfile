@@ -1,0 +1,9 @@
+panic.meancat.com {
+  encode zstd gzip
+  reverse_proxy app:5000
+  transport http {
+    read_buffer 8192
+    read_timeout 1m
+    write_timeout 1m
+  }
+}
