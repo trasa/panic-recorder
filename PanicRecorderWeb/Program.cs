@@ -68,5 +68,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.MapGet("/", () => Results.Redirect("https://github.com/trasa/panic-recorder#readme.md", permanent: false));
+app.MapGet("/index", () => Results.Redirect("https://github.com/trasa/panic-recorder#readme.md", permanent: false));
 app.Run();
