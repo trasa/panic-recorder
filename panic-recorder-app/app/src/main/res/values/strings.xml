@@ -7,6 +7,8 @@
     <string name="api_url_setting">https://panic.meancat.com</string>
     <string name="secret_label">PanicWeb Secret</string>
     <string name="app_secret_setting">App Secret</string>
+    <string name="s3_path_prefix_label">S3 Path Prefix:</string>
+    <string name="s3_path_prefix">streams</string>
     <string name="save_configuration_setting">Save Configuration</string>
     <string name="cancel">Cancel</string>
     <string name="enable_s3_upload_setting">Enable S3 Upload</string>

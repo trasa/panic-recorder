@@ -10,6 +10,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <CheckBox
+            android:id="@+id/checkbox_enable_upload"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_s3_upload_setting"
+            android:layout_marginBottom="16dp" />
+        
         <TextView
             android:id="@+id/url_label"
             android:layout_width="wrap_content"
@@ -42,11 +49,20 @@
             android:inputType="textPassword"
             android:layout_marginBottom="24dp"/>
 
-        <CheckBox
-            android:id="@+id/checkbox_enable_upload"
+        <TextView
+            android:id="@+id/s3_path_prefix_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/enable_s3_upload_setting"
+            android:text="@string/s3_path_prefix_label"
+            android:labelFor="@+id/edit_s3_path_prefix" />
+
+        <EditText
+            android:id="@+id/edit_s3_path_prefix"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="streams"
+            android:hint="@string/s3_path_prefix"
+            android:inputType="text"
             android:layout_marginBottom="16dp" />
 
         <Button

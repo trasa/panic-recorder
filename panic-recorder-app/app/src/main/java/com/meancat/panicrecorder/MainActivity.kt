@@ -252,11 +252,12 @@ class MainActivity : AppCompatActivity() {
                 "yyyyMMdd_HHmmss",
                 Locale.US
             ).format(Date()) + "_" + UUID.randomUUID().toString()
+            val s3PathPrefix = config.s3PathPrefix ?: "streams"
             mediaStreamer = MultipartStreamer(
                 api,
                 client,
                 videoFile,
-                "streams/$timestamp/${videoFile.nameWithoutExtension}.ts"
+                "$s3PathPrefix/${videoFile.nameWithoutExtension}.ts"
             )
             streamerThread = thread(start = true, name = "MultipartStreamer") {
                 val ok = mediaStreamer.runBlocking()
