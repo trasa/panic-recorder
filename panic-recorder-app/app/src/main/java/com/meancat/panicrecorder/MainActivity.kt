@@ -1,6 +1,7 @@
 package com.meancat.panicrecorder
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
@@ -248,10 +249,6 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             val api = PanicApi(client, token)
-            val timestamp = SimpleDateFormat(
-                "yyyyMMdd_HHmmss",
-                Locale.US
-            ).format(Date()) + "_" + UUID.randomUUID().toString()
             val s3PathPrefix = config.s3PathPrefix ?: "streams"
             mediaStreamer = MultipartStreamer(
                 api,
@@ -266,19 +263,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun supportsUnprocessedAudio(): Boolean {
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val v = am.getProperty(android.media.AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)
+        return v?.equals("true", ignoreCase = true) == true
+    }
     private fun setupMediaRecorder() {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         videoFile = File(getExternalFilesDir(null), "panic_$timestamp.ts")
 
+        val audioSource = if (supportsUnprocessedAudio())
+            MediaRecorder.AudioSource.UNPROCESSED
+        else
+            MediaRecorder.AudioSource.CAMCORDER
+        
         try {
             mediaRecorder = MediaRecorder(this).apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setAudioSource(audioSource)
                 setVideoSource(MediaRecorder.VideoSource.SURFACE)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_2_TS)
                 setOutputFile(videoFile.absolutePath)
                 Log.d(TAG, "output is ${videoFile.absolutePath}")
                 setVideoEncoder(MediaRecorder.VideoEncoder.H264)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                
+                setAudioSamplingRate(48_000) // 48 kHz
+                setAudioEncodingBitRate(192_000) // 192 kbps
+                try { setAudioChannels(2) } catch(_: Exception) { setAudioChannels(1) } // stereo if supported
+                
                 setVideoEncodingBitRate(10_000_000)
                 setVideoFrameRate(30)
                 setVideoSize(previewSize.width, previewSize.height)
