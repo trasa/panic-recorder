@@ -16,6 +16,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.Surface
 import android.view.TextureView
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -192,6 +193,9 @@ class MainActivity : AppCompatActivity() {
             if (config.enableUpload) {
                 startUploading(config)
             }
+            // no sleeping
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
             val surfaceTexture = textureView.surfaceTexture!!
             surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
             previewSurface = Surface(surfaceTexture)
@@ -237,6 +241,7 @@ class MainActivity : AppCompatActivity() {
             cameraDevice.createCaptureSession(sessionConfig)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start recording", e)
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
     
@@ -320,6 +325,9 @@ class MainActivity : AppCompatActivity() {
             stopUploading()
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
+        } finally {
+            // back to sleep
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
     
