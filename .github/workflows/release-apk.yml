@@ -1,0 +1,132 @@
+name: PanicRecorder App Release
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.5.0
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to create (e.g. v1.5.0). Leave empty to auto-generate.'
+        required: false
+        default: ''
+      release_name:
+        description: 'Release title (defaults to "Release <tag>")'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark as pre-release?'
+        type: boolean
+        required: false
+        default: false
+      notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            NAME="Release ${TAG}"
+            PRERELEASE="false"
+            NOTES=""
+          else
+            # manual run
+            TAG_INPUT="${{ inputs.tag_name }}"
+            if [[ -z "$TAG_INPUT" ]]; then
+              TAG="v$(date +%Y.%m.%d)-build${{ github.run_number }}"
+            else
+              TAG="$TAG_INPUT"
+            fi
+            NAME_INPUT="${{ inputs.tag_name }}"
+            if [[ -z "$NAME_INPUT" ]]; then
+              NAME="Release ${TAG}"
+            else
+              NAME="$NAME_INPUT"
+            fi
+            PRERELEASE="${{ inputs.prerelease }}"
+            NOTES="${{ inputs.notes }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          # write notes to a file
+          printf "%s" "$NOTES" > RELEASE_NOTES.txt
+          echo "notes_file=RELEASE_NOTES.txt" >> $GITHUB_OUTPUT
+          
+      - name: Create tag (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          if git rev-parse "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag already exists locally."
+          else
+            git tag -a "${{ steps.meta.output.tag }}" -m "${{ steps.meta.outputs.name }}"
+          fi
+          # push tag
+          git push origin "refs/tags/${{ steps.meta.output.tag }}" || true
+           
+      - name: Prepare keystore
+        run: |
+          mkdir -p keystore
+          echo "$SIGNING_STORE_FILE_BASE64" | base64 -d > keystore/release.jks
+        env:
+          SIGNING_STORE_FILE_BASE64: ${{ secrets.SIGNING_STORE_FILE_BASE64 }}
+
+      - name: Grant Gradle permissions
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        env:
+          SIGNING_STORE_FILE: keystore/release.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew clean :app:assembleRelease
+
+      - name: Find artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          APK_PATH=$(ls -1 app/build/outputs/apk/**/release/*.apk | head -n 1)
+          MAPPING_PATH=$(ls -1 app/build/outputs/mapping/**/release/mapping.txt 2>/dev/null || true)
+          echo "apk=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "mapping=$MAPPING_PATH" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK_PATH"
+          if [[ -n "$MAPPING_PATH" ]]; then echo "Found mapping: $MAPPING_PATH"; fi
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          body_path: ${{ steps.meta.outputs.notes_file }}
+          files: |
+            ${{ steps.artifacts.outputs.apk }}
+            ${{ steps.artifacts.outputs.mapping }}
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+          
