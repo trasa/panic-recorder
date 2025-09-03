@@ -60,7 +60,8 @@ jobs:
             else
               TAG="$TAG_INPUT"
             fi
-            NAME_INPUT="${{ inputs.tag_name }}"
+
+            NAME_INPUT="${{ inputs.release_name }}"
             if [[ -z "$NAME_INPUT" ]]; then
               NAME="Release ${TAG}"
             else
@@ -72,9 +73,9 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "name=$NAME" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-          # write notes to a file
+          # write to working directory and export absolute path
           printf "%s" "$NOTES" > RELEASE_NOTES.txt
-          echo "notes_file=RELEASE_NOTES.txt" >> $GITHUB_OUTPUT
+          echo "notes_file=$(pwd)/RELEASE_NOTES.txt" >> $GITHUB_OUTPUT
           
       - name: Create tag (manual runs only)
         if: github.event_name == 'workflow_dispatch'
@@ -88,7 +89,10 @@ jobs:
           fi
           # push tag
           git push origin "refs/tags/${{ steps.meta.outputs.tag }}" || true
-           
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+       
       - name: Prepare keystore
         run: |
           mkdir -p keystore
@@ -113,9 +117,8 @@ jobs:
         id: artifacts
         shell: bash
         run: |
-          ls -l app/build/outputs/apk/release
-          APK_PATH=$(ls -1 app/build/outputs/apk/release/*.apk | head -n 1)
-          MAPPING_PATH=$(ls -1 app/build/outputs/mapping/**/release/mapping.txt 2>/dev/null || true)
+          APK_PATH=$(ls -1 "$(pwd)"/app/build/outputs/apk/release/*.apk | head -n 1)
+          MAPPING_PATH=$(ls -1 "$(pwd)"/app/build/outputs/mapping/release/mapping.txt 2>/dev/null || true)
           echo "apk=$APK_PATH" >> $GITHUB_OUTPUT
           echo "mapping=$MAPPING_PATH" >> $GITHUB_OUTPUT
           echo "Found APK: $APK_PATH"
@@ -127,9 +130,9 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.name }}
           prerelease: ${{ steps.meta.outputs.prerelease }}
-          body_path: ${{ steps.meta.outputs.notes_file }}
+          body_path: ${{ steps.meta.outputs.notes_file }} # absolute path
           files: |
-            ${{ steps.artifacts.outputs.apk }}
+            ${{ steps.artifacts.outputs.apk }} 
             ${{ steps.artifacts.outputs.mapping }}
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
