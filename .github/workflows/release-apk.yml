@@ -81,10 +81,10 @@ jobs:
           if git rev-parse "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
             echo "Tag already exists locally."
           else
-            git tag -a "${{ steps.meta.output.tag }}" -m "${{ steps.meta.outputs.name }}"
+            git tag -a "${{ steps.meta.outputs.tag }}" -m "${{ steps.meta.outputs.name }}"
           fi
           # push tag
-          git push origin "refs/tags/${{ steps.meta.output.tag }}" || true
+          git push origin "refs/tags/${{ steps.meta.outputs.tag }}" || true
            
       - name: Prepare keystore
         run: |
