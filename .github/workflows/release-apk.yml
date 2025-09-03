@@ -93,6 +93,8 @@ jobs:
         run: |
           mkdir -p keystore
           echo "$SIGNING_STORE_FILE_BASE64" | base64 -d > keystore/release.jks
+          pwd
+          ls keystore/*
         env:
           SIGNING_STORE_FILE_BASE64: ${{ secrets.SIGNING_STORE_FILE_BASE64 }}
 
@@ -101,7 +103,7 @@ jobs:
 
       - name: Build release APK
         env:
-          SIGNING_STORE_FILE: keystore/release.jks
+          SIGNING_STORE_FILE: ../keystore/release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
