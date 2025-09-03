@@ -27,6 +27,9 @@ on:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./panic-recorder-app
 
     steps:
       - name: Checkout
