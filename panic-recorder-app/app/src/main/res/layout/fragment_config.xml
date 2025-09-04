@@ -70,15 +70,18 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/local_storage_path_label" />
-
+        
         <TextView
             android:id="@+id/local_storage_path"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:textColor="?attr/colorPrimary"
             android:textIsSelectable="true"
-            android:padding="8dp"
-            android:textSize="14sp"/>
-        
+            android:paddingTop="8dp"
+            android:textSize="14sp" />
+
         <Button
             android:id="@+id/button_save"
             android:layout_width="wrap_content"

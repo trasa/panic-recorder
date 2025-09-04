@@ -1,7 +1,9 @@
 package com.meancat.panicrecorder
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.view.*
 import android.widget.Button
@@ -49,10 +51,27 @@ class ConfigFragment : Fragment() {
         cancelButton = view.findViewById(R.id.button_cancel)
 
         // where files are written to locally
-        val path = requireContext().getExternalFilesDir(null)?.absolutePath ?: "Unavailable"
-        view.findViewById<TextView>(R.id.local_storage_path).text = path
+        val storageDir = requireContext().getExternalFilesDir(null)
+        val path = storageDir?.absolutePath ?: "Unavailable"
+        val pathView = view.findViewById<TextView>(R.id.local_storage_path)
+        pathView.text = path
+        // make it clickable
+        pathView.setOnClickListener { 
+            storageDir?.let {
+                try {
+                    val uri = Uri.fromFile(it)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "*/*")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(intent)
+                } catch(e: Exception) {
+                    Toast.makeText(requireContext(), "No file manager app found", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         
-        val prefs = requireContext().getSharedPreferences("panic_config", Context.MODE_PRIVATE)
+         val prefs = requireContext().getSharedPreferences("panic_config", Context.MODE_PRIVATE)
         apiUrlField.setText(prefs.getString("api_url", ""))
         secretField.setText(prefs.getString("app_secret", ""))
         s3PathPrefixField.setText(prefs.getString("s3_path_prefix", "streams"))
