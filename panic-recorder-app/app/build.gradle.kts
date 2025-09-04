@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.SigningConfig
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,6 +7,21 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+fun loadEnv(): Properties {
+    val props = Properties()
+    val envFile = rootProject.file(".env")
+    if (envFile.exists()) {
+        envFile.inputStream().use { props.load(it) }
+    }
+    return props
+}
+
+val env = loadEnv()
+
+fun getEnvVar(key: String): String? {
+    // prefer .env, fallback to actual environment variable
+    return env.getProperty(key) ?: System.getenv(key)
+}
 android {
     namespace = "com.meancat.panicrecorder"
     compileSdk = 35
@@ -22,10 +38,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(System.getenv("SIGNING_STORE_FILE"))
-            storePassword = System.getenv("SIGNING_STORE_PASSWORD")
-            keyAlias = System.getenv("SIGNING_KEY_ALIAS")
-            keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            storeFile = file(getEnvVar("SIGNING_STORE_FILE") ?: "")
+            storePassword = getEnvVar("SIGNING_STORE_PASSWORD")
+            keyAlias = getEnvVar("SIGNING_KEY_ALIAS")
+            keyPassword = getEnvVar("SIGNING_KEY_PASSWORD")
         }
     }
     buildTypes {
