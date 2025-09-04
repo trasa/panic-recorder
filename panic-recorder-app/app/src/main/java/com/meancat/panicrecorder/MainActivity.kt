@@ -332,9 +332,10 @@ class MainActivity : AppCompatActivity() {
                 videoFile.delete()
                 logMediaInfo(uri)
             }
-            Toast.makeText(this, "Recording saved to Movies: ${videoFile.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Recording saved to Movies: ${videoFile.name}", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
+            Toast.makeText(this, "Exception while stopping recording ${e.message}", Toast.LENGTH_LONG).show()
         } finally {
             // back to sleep
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
