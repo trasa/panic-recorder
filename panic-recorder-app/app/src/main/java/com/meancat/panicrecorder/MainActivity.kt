@@ -1,7 +1,6 @@
 package com.meancat.panicrecorder
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
@@ -39,8 +38,8 @@ class MainActivity : AppCompatActivity() {
     private var cameraCaptureSession: CameraCaptureSession? = null
     private var isRecording = false
     private lateinit var videoFile: File
-    private lateinit var mediaStreamer: MultipartStreamer
-    private lateinit var streamerThread: Thread
+    private var mediaStreamer: MultipartStreamer? = null
+    private var streamerThread: Thread? = null
     private var previewSurface: Surface? = null
     private var recorderSurface: Surface? = null
 
@@ -262,7 +261,7 @@ class MainActivity : AppCompatActivity() {
                 "$s3PathPrefix/${videoFile.nameWithoutExtension}.ts"
             )
             streamerThread = thread(start = true, name = "MultipartStreamer") {
-                val ok = mediaStreamer.runBlocking()
+                val ok = mediaStreamer?.runBlocking() ?: false
                 Log.d(TAG, "Streaming completed: $ok")
             }
         }
@@ -332,8 +331,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun stopUploading() {
-        mediaStreamer.stop()
-        streamerThread.join()
+            mediaStreamer?.stop()
+            streamerThread?.join()
     }
     
     override fun onCreateOptionsMenu(menu: Menu) : Boolean {

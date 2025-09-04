@@ -12,4 +12,5 @@
     <string name="save_configuration_setting">Save Configuration</string>
     <string name="cancel">Cancel</string>
     <string name="enable_s3_upload_setting">Enable S3 Upload</string>
+    <string name="local_storage_path_label">Storage directory:</string>
 </resources>

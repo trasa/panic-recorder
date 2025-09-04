@@ -7,6 +7,7 @@ import android.view.*
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.core.content.edit
@@ -27,7 +28,7 @@ class ConfigFragment : Fragment() {
     }
     
     private fun writePreferences(prefs: SharedPreferences) {
-        prefs.edit() {
+        prefs.edit {
             putString("api_url", apiUrlField.text.toString().trim())
             putString("app_secret", secretField.text.toString().trim())
             putString("s3_path_prefix", getS3PathPrefix())
@@ -47,6 +48,10 @@ class ConfigFragment : Fragment() {
         saveButton = view.findViewById(R.id.button_save)
         cancelButton = view.findViewById(R.id.button_cancel)
 
+        // where files are written to locally
+        val path = requireContext().getExternalFilesDir(null)?.absolutePath ?: "Unavailable"
+        view.findViewById<TextView>(R.id.local_storage_path).text = path
+        
         val prefs = requireContext().getSharedPreferences("panic_config", Context.MODE_PRIVATE)
         apiUrlField.setText(prefs.getString("api_url", ""))
         secretField.setText(prefs.getString("app_secret", ""))
