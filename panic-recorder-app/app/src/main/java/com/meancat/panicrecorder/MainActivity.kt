@@ -1,6 +1,7 @@
 package com.meancat.panicrecorder
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.SurfaceTexture
@@ -8,7 +9,9 @@ import android.hardware.camera2.*
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.media.MediaRecorder
+import android.net.Uri
 import android.os.*
+import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import android.view.Menu
@@ -171,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
-                    Log.e(TAG, "CameraDevice.StateCallback error: ${error}")
+                    Log.e(TAG, "CameraDevice.StateCallback error: $error")
                     camera.close()
                     if (::mediaRecorder.isInitialized) {
                         mediaRecorder.reset()
@@ -272,6 +275,7 @@ class MainActivity : AppCompatActivity() {
         val v = am.getProperty(android.media.AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)
         return v?.equals("true", ignoreCase = true) == true
     }
+    
     private fun setupMediaRecorder() {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         videoFile = File(getExternalFilesDir(null), "panic_$timestamp.ts")
@@ -306,13 +310,13 @@ class MainActivity : AppCompatActivity() {
         } 
     }
 
-
     private fun stopRecording() {
         try {
             cameraCaptureSession?.stopRepeating()
             cameraCaptureSession?.abortCaptures()
             cameraCaptureSession?.close()
             cameraCaptureSession = null
+            // finish recording
             mediaRecorder.reset()
             mediaRecorder.release()
             isRecording = false
@@ -320,8 +324,15 @@ class MainActivity : AppCompatActivity() {
             recordButton.text = getString(R.string.start_recording)
             previewSurface?.release()
             recorderSurface?.release()
-            Toast.makeText(this, "Recording saved: ${videoFile.name}", Toast.LENGTH_SHORT).show()
+            
+            // stop uploading to finish reading the file
             stopUploading()
+            val uri = copyToMovies()
+            if (uri != null) {
+                videoFile.delete()
+                logMediaInfo(uri)
+            }
+            Toast.makeText(this, "Recording saved to Movies: ${videoFile.name}", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e(TAG, "failed to stop recording", e)
         } finally {
@@ -333,6 +344,46 @@ class MainActivity : AppCompatActivity() {
     private fun stopUploading() {
             mediaStreamer?.stop()
             streamerThread?.join()
+    }
+    
+    private fun copyToMovies(): Uri? {
+        val resolver = contentResolver
+        val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val values = ContentValues().apply { 
+            put(MediaStore.MediaColumns.DISPLAY_NAME, videoFile.name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp2t")
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                Environment.DIRECTORY_MOVIES + "/PanicRecorder"
+            )
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(collection, values) ?: return null
+        resolver.openOutputStream(uri)?.use { out ->
+            videoFile.inputStream().use { it.copyTo(out) }
+        }
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        return uri
+    }
+    
+    private fun logMediaInfo(uri: Uri) {
+        val projection = arrayOf(
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.RELATIVE_PATH,
+            MediaStore.MediaColumns.SIZE
+        )
+        contentResolver.query(uri, projection, null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val name =
+                    c.getString(c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME))
+                val rel =
+                    c.getString(c.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH))
+                val size = c.getLong(c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
+                Log.i(TAG, "Created media file $rel$name ($size bytes)")
+            }
+        }
     }
     
     override fun onCreateOptionsMenu(menu: Menu) : Boolean {
